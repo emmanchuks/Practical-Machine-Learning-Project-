@@ -2,13 +2,15 @@
 title: "Coursera Practical Machine Learning Project"
 author: "Ezeonyebuchi E. C."
 date: "27/04/2019"
-output: html_document
+output:
+  html_document:
+    keep_md: true
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
 Introduction:
 Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount 
 of data about personal activity relatively inexpensively. These type of devices are part of the quantified 
@@ -20,7 +22,7 @@ who were asked to perform dumbbell lifts correctly and incorrectly in 5 differen
 The data consists of a Training data and a Test data (to be used to validate the selected model).
 The goal of your project is to predict the manner in which they did the exercise. 
 This is the âclasseâ variable in the training set. I will useany of the other variables to predict with.
-```
+
 Load needed libraries
 ```{r}
 library(knitr)
@@ -62,13 +64,13 @@ dim(testData)
 ```
 Partioning the training set into two
 Partioning Training data set into two data sets.I am using 70% for Training and 30% for Testing:
+
 ```{r}
 inTrain <- createDataPartition(y = trainData$classe, p=0.7, list=FALSE)
 Trainset <- trainData[inTrain, ]
 Testset <- trainData[-inTrain, ]
 dim(Trainset)
 dim(Testset)
-
 ```
 Removing variables with Nearly Zero Variance
 ```{r}
@@ -109,7 +111,7 @@ model fit
 ```{r}
 controlRF <- trainControl(method="cv", number=3, verbose=FALSE)
 modFitRandForest <- train(classe ~ ., data=Trainset, method="rf",
-trControl=controlRF)
+                          trControl=controlRF)
 modFitRandForest$finalModel
 ```
 Prediction on Test Dataset
@@ -119,8 +121,8 @@ confMatRandForest <- confusionMatrix(predictRandForest, Testset$classe)
 confMatRandForest
 
 plot(confMatRandForest$table, col = confMatRandForest$byClass, 
-main = paste("Random Forest - Accuracy =",
-round(confMatRandForest$overall['Accuracy'], 4)))
+     main = paste("Random Forest - Accuracy =",
+                  round(confMatRandForest$overall['Accuracy'], 4)))
 ```
 (b) Method: Decision Trees
 model fit
@@ -134,7 +136,7 @@ Prediction on Test dataset
 predictDT <- predict(modFitDT, newdata=Testset, type="class")
 confMatDT <- confusionMatrix(predictDT, Testset$classe)
 confMatDT
-               
+
 plot(confMatDT$table, col = confMatDT$byClass, 
      main = paste("Decision Tree - Accuracy =",
                   round(confMatDT$overall['Accuracy'], 4)))
@@ -146,7 +148,7 @@ model fit
 set.seed(4000)
 control_GBM <- trainControl(method = "repeatedcv", number = 5, repeats = 1)
 modFit_GBM  <- train(classe ~ ., data=Trainset, method = "gbm",
-                    trControl = control_GBM, verbose = FALSE)
+                     trControl = control_GBM, verbose = FALSE)
 modFit_GBM$finalModel
 ```
 Prediction on Test dataset
@@ -162,10 +164,10 @@ plot(confMat_GBM$table, col = confMat_GBM$byClass,
 The accuracy of the 3 regression modeling methods above are:
 ```{r}
 RandomForest <- print(paste("Random Forest - Accuracy =",
-round(confMatRandForest$overall['Accuracy'], 4)))
+                            round(confMatRandForest$overall['Accuracy'], 4)))
 
 DecisionTree <- print(paste("Decision Tree - Accuracy =",
-                                                round(confMatDT$overall['Accuracy'], 4)))
+                            round(confMatDT$overall['Accuracy'], 4)))
 
 GBM <- print(paste("GBM - Accuracy =", round(confMat_GBM$overall['Accuracy'], 4)))
 ```
@@ -174,15 +176,4 @@ From the above observation, RandomForest model gives a better result and will be
 ```{r}
 predictTEST <- predict(modFitRandForest, newdata=testData)
 predictTEST
-```
-Predicting out-of-Sample Error using the preferred model:RandomForest
-```{r}
-predictRandForest <- predict(modFitRandForest, newdata=Testset)
-confMatRandForest <- confusionMatrix(predictRandForest, Testset$classe)
-confMatRandForest
-```
-Calculate out of sample error
-```{r}
-sqrt(mean((predictRandForest - modFitRandForest$finalModel)^2))
-sqrt(mean((predictTEST - predictRandForest)^2))
 ```
