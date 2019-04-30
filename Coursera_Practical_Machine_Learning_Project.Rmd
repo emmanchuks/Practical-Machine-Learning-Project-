@@ -1,0 +1,234 @@
+---
+title: "Coursera Practical Machine Learning Project"
+author: "Ezeonyebuchi E. C."
+date: "30/04/2019"
+output:
+  html_document:
+    keep_md: true
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Introduction:
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount 
+of data about personal activity relatively inexpensively. These type of devices are part of the quantified 
+self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health,
+to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+In this project, I will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participant 
+who were asked to perform dumbbell lifts correctly and incorrectly in 5 different ways.
+The data consists of a Training data and a Test data (to be used to validate the selected model).
+The goal of your project is to predict the manner in which they did the exercise. 
+This is the Ã¢ÂÂclasseÃ¢ÂÂ variable in the training set. I will useany of the other variables to predict with.
+```{r}
+```
+EXECUTIVE SUMMARY OF THE DATA PROCESSING
+```{r}
+```
+1. Set up the working directory.
+
+2. Download the datasets
+
+3.Load the training and testing data, and perform elementary data analysis.
+
+4.Preprocess the data, and extract the useful feature. For this purpose, 
+select the columns which have most of the entry are NA and blank, and filter out 
+the training and test data set and build the validate data set that use to train the model.
+
+5.For implementing Machine Learning algorithm load the “caret” package.
+
+6.Partition the tidy training data using “createDataPartition()” function and perform basic operations.
+
+7.Now find out the less useful or useless predictor from the tidy training data set, and update the training data set.
+
+8.Fit a model on the training data set i.e apply “train()” function where method is random forest algorithm (mehtod = “rf”). In order to speed up the execution trControl parameter of the “train” function is used.
+
+9. Predict the classe of each instance of the reshaped test data set by using “prediction” function of the caret package.
+
+10.Estimate out of sample error appropriately with cross-validation
+```{r}
+```
+1. Set up the working directory.
+```{r}
+```
+Load required libraries for the data processing
+```{r}
+library(knitr)
+library(rattle)
+library(randomForest)
+library(rpart.plot)
+library(caret)
+library(rpart)
+library(gbm)
+library(RColorBrewer)
+library(corrplot)
+library(ggplot2)
+library(colorspace)
+```
+Download the datasets
+a]For the traing data
+```{r}
+TrainURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+##download.file(TrainURL, destfile = "./pml-training", method="auto")
+```
+2] For test data
+```{r}
+TestUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+##download.file(TestUrl, destfile = "./pml-testing.csv", method = "auto")
+```
+Load the training and testing data, and perform elementary data analysis.
+```{r}
+trainData <- read.csv("./pml-training", header = TRUE)
+dim(trainData)
+#str(trainData)
+
+testData <- read.csv("./pml-testing.csv", header = TRUE)
+dim(testData)
+#str(testData)
+```
+Partition the training data using “createDataPartition()” function and perform basic operations
+Partioning Training data set into two data sets.I am using 70% for Training and 30% for Testing:
+```{r}
+inTrain <- createDataPartition(y = trainData$classe, p=0.7, list=FALSE)
+Trainset <- trainData[inTrain, ]
+Testset <- trainData[-inTrain, ]
+dim(Trainset)
+dim(Testset)
+```
+Preprocess the data, and extract the useful feature. For this purpose, 
+select the columns which have most of the entry are NA and blank, and filter out 
+the training and test data set and build the validate data set that use to train the model.
+```{r}
+NZV <- nearZeroVar(Trainset)
+Trainset <- Trainset[, -NZV]
+Testset  <- Testset[, -NZV]
+dim(Trainset)
+dim(Testset)
+```
+Remove variables that are mostly NA (mNA)
+```{r}
+mNA <- sapply(Trainset, function(x) mean(is.na(x))) > 0.95
+Trainset <- Trainset[, mNA==FALSE]
+Testset  <- Testset[, mNA==FALSE]
+dim(Trainset)
+dim(Testset)
+```
+Remove identification only variables (columns 1 to 5)
+```{r}
+Trainset <- Trainset[, -(1:5)]
+Testset  <- Testset[, -(1:5)]
+dim(Trainset)
+dim(Testset)
+```
+The number of variables for analysis has been reduced to 54 with the above cleaning exercise 
+Correlation Analysis
+```{r}
+corMatrix <- cor(Trainset[, -54])
+corrplot(corMatrix, order = "FPC", method = "color", type = "lower", 
+         tl.cex = 0.8, tl.col = rgb(0, 0, 0))
+```
+Prediction Models Building
+Three methods will be applied to the regression models. 
+A Confusion Matrix is plotted at the end of each for better visualization of the  the accuracy of the models.
+
+(a)Random Forest
+model fit
+```{r}
+controlRF <- trainControl(method="cv", number=3, verbose=FALSE)
+modFitRandForest <- train(classe ~ ., data=Trainset, method="rf",
+                          trControl=controlRF)
+modFitRandForest$finalModel
+```
+Prediction on Test Dataset
+```{r}
+predictRandForest <- predict(modFitRandForest, newdata=Testset)
+confMatRandForest <- confusionMatrix(predictRandForest, Testset$classe)
+confMatRandForest
+
+plot(confMatRandForest$table, col = confMatRandForest$byClass, 
+     main = paste("Random Forest - Accuracy =",
+                  round(confMatRandForest$overall['Accuracy'], 4)))
+```
+(b) Method: Decision Trees
+model fit
+```{r}
+set.seed(4000)
+modFitDT <- rpart(classe ~ ., data=Trainset, method="class")
+fancyRpartPlot(modFitDT)
+```
+Prediction on Test dataset
+```{r}
+predictDT <- predict(modFitDT, newdata=Testset, type="class")
+confMatDT <- confusionMatrix(predictDT, Testset$classe)
+confMatDT
+
+plot(confMatDT$table, col = confMatDT$byClass, 
+     main = paste("Decision Tree - Accuracy =",
+                  round(confMatDT$overall['Accuracy'], 4)))
+```
+
+(c)Generalized Boosted Model
+model fit
+```{r}
+set.seed(4000)
+control_GBM <- trainControl(method = "repeatedcv", number = 5, repeats = 1)
+modFit_GBM  <- train(classe ~ ., data=Trainset, method = "gbm",
+                     trControl = control_GBM, verbose = FALSE)
+modFit_GBM$finalModel
+```
+Prediction on Test dataset
+```{r}
+predict_GBM <- predict(modFit_GBM, newdata=Testset)
+confMat_GBM <- confusionMatrix(predict_GBM, Testset$classe)
+confMat_GBM
+
+
+plot(confMat_GBM$table, col = confMat_GBM$byClass, 
+     main = paste("GBM - Accuracy =", round(confMat_GBM$overall['Accuracy'], 4)))
+```
+The accuracy of the 3 regression modeling methods above are:
+```{r}
+RandomForest <- print(paste("Random Forest - Accuracy =",
+                            round(confMatRandForest$overall['Accuracy'], 4)))
+
+DecisionTree <- print(paste("Decision Tree - Accuracy =",
+                            round(confMatDT$overall['Accuracy'], 4)))
+
+GBM <- print(paste("GBM - Accuracy =", round(confMat_GBM$overall['Accuracy'], 4)))
+```
+From the above observation, RandomForest model gives a better result and will be applied to predict the 20 quiz results 
+(testing (testData) dataset) as shown below.
+```{r}
+predictTEST <- predict(modFitRandForest, newdata=testData)
+predictTEST
+summary(predictTEST)
+```
+
+create a character vector of the predictions and check the length of the vector
+```{r}
+predictTEST <- c(as.character(predictTEST))
+
+#Length of the predicted vector
+length(predictTEST)
+```
+Estimate out of sample error appropriately with cross-validation
+Out of sample error
+```{r}
+dim(Testset)
+```
+True accuracy of the predicted model
+```{r}
+outOfSampleError.accuracy <- sum(predictTEST == Testset$classe)/length(predictTEST)
+
+outOfSampleError.accuracy
+```
+Out of sample error and percentage of out of sample error
+```{r}
+outOfSampleError <- 1 - outOfSampleError.accuracy
+outOfSampleError
+
+e <- outOfSampleError * 100
+paste0("Out of sample error estimation: ", round(e, digits = 2), "%")
+```
